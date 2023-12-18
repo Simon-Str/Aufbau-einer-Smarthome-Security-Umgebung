@@ -20,7 +20,7 @@ Vagrant.configure("2") do |config|
     vb.customize ['modifyvm', :id, '--draganddrop', 'bidirectional']
    # vb.customize ["modifyvm", :id, "--nic2", "hostonly", "--hostonlyadapter2", "VirtualBox Host-Only Ethernet Adapter"]
   end
-  # config.vm.synced_folder "vagrant" , "/vagrant", :mount_options => ["ro"]
+  config.vm.synced_folder "vagrant" , "/vagrant", :mount_options => ["ro"]
   # config.vm.synced_folder "synced_folder" , "/synced_folder/", type: "virtualbox", :mount_options => ['dmode=777','fmode=775'], automount: true
 
   if Vagrant.has_plugin?("vagrant-vbguest") then
