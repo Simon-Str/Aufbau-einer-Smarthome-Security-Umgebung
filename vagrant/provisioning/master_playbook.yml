@@ -1,0 +1,108 @@
+---
+- hosts: all 
+  become: yes 
+  tasks: 
+  - name: Print all available facts
+    ansible.builtin.debug:
+      var: ansible_facts
+
+  - name: Installing Dependencies
+    apt:
+      name:
+       cmake
+       python3
+       pip3
+       device-tree-compiler
+
+      state: latest
+      update_cache: true
+
+
+  # - name: Cloning repo
+    # git:
+      # repo: https://gitlab.com/
+      # dest: /home/vagrant/
+      # clone: yes
+      # update: yes
+
+  # - name: running cmd
+    # shell:
+      # cmd: 
+      # chdir: /home/vagrant/
+
+  # - name: Copy File
+    # ansible.builtin.copy:
+      # src: /vagrant/provisioning/
+      # dest: /home/vagrant/
+      # mode: '0755'
+      # remote_src: yes
+      
+  # - name: Download und unarchive TAR
+    # ansible.builtin.unarchive:
+      # src: 
+      # dest: /home/vagrant/
+      # remote_src: yes
+
+  - name: apt update & upgrade
+    shell:
+      cmd: sudo apt update; sudo apt upgrade -y
+      chdir: /home/vagrant/
+
+  - name: install west
+    shell:
+      cmd: pip3 install --user west; echo 'export PATH=~/.local/bin:"$PATH"' >> ~/.bashrc; source ~/.bashrc
+      chdir: /home/vagrant/
+
+  - name: Init workspace filfer with ncs-playground
+    shell:
+      cmd: west init -m https://github.com/makerdiary/ncs-playground --mr main my-workspace 
+      chdir: /home/vagrant/
+      
+  - name: Update my-workspace
+    shell:
+      cmd:  west update
+      chdir: /home/vagrant/my-workspace
+
+  - name: Export Zephyr CMake-Package
+    shell:
+      cmd:  west zephyr-export
+      chdir: /home/vagrant/my-workspace
+
+  - name: Install Python Dependencies
+    shell:
+      cmd:  pip3 install --user -r zephyr/scripts/requirements.txt -r nrf/scripts/requirements.txt -r bootloader/mcuboot/scripts/requirements.txt
+      chdir: /home/vagrant/my-workspace
+
+  - name: Download und unarchive X86_64 TAR
+    ansible.builtin.unarchive:
+      src: https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.1/zephyr-sdk-0.16.1_linux-x86_64.tar.xz
+      dest: /home/vagrant/
+      remote_src: yes
+      when: ansible_architecture == "x86_64"
+
+  - name: Download und unarchive aarch64 TAR
+    ansible.builtin.unarchive:
+      src: https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.1/zephyr-sdk-0.16.1_linux-aarch64.tar.xz
+      dest: /home/vagrant/
+      remote_src: yes
+      when: ansible_architecture == "aarch64"
+
+  - name: check SHA256 sum
+    shell:
+      cmd: wget -O - https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.1/sha256.sum | shasum --check --ignore-missing
+      chdir: /home/vagrant/
+
+  - name: Run Zephyr SDK Setup
+    shell:
+      cmd: ./setup
+      chdir: /home/vagrant/zephyr-sdk-0.16.1
+
+  - name: X86_64: install udev rules
+    shell:
+      cmd: sudo cp ~/zephyr-sdk-0.16.1/sysroots/x86_64-pokysdk-linux/usr/share/openocd/contrib/60-openocd.rules /etc/udev/rules.d
+      when: ansible_architecture == "x86_64"
+
+  - name: aarch64: install udev rules
+    shell:
+      cmd: sudo cp ~/zephyr-sdk-0.16.1/sysroots/aarch64-pokysdk-linux/usr/share/openocd/contrib/60-openocd.rules /etc/udev/rules.d
+      when: ansible_architecture == "aarch64" 
